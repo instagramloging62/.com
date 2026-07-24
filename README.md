@@ -1,12 +1,15 @@
-# CAMORRO
+# CAMORRO v3
 
-Instagram authorized security testing tool:
-- OSINT recon
-- Smart password wordlist generation
-- Brute force login with live progress
+Instagram authorized testing toolkit:
+- OSINT Recon + avatar download
+- Smart password generator (18000+)
+- Brute force with live progress
+- Proxy rotation
+- Resume attack
+- Multi-target / combo
+- HTML reports
 
 ## Install (Termux)
-
 ```bash
 pkg update && pkg upgrade -y
 pkg install python git -y

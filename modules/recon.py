@@ -1,147 +1,141 @@
-"""OSINT reconnaissance module — جمع معلومات الحساب."""
-
 import json
-import instaloader
+import re
+import requests
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
-from typing import Optional
 
 console = Console()
 
-class InstaRecon:
-    """Instagram account intelligence gathering."""
+HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Linux; Android 13; SM-S908B) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/124.0.0.0 Mobile Safari/537.36"
+    ),
+    "Accept-Language": "en-US,en;q=0.9",
+    "X-IG-App-ID": "936619743392459",
+}
 
+
+class Recon:
     def __init__(self, username: str):
-        self.username = username
-        self.loader = instaloader.Instaloader(
-            download_pictures=False,
-            download_videos=False,
-            download_video_thumbnails=False,
-            save_metadata=False,
-            compress_json=False,
-        )
-        self.profile: Optional[instaloader.Profile] = None
-        self.data: dict = {}
+        self.username = username.lstrip("@").strip()
+        self.session = requests.Session()
+        self.session.headers.update(HEADERS)
+        self.data = {}
 
     def gather(self) -> dict:
-        """Run full recon on target account."""
-        console.print(Panel.fit(f"[bold cyan]🔍 Recon: @{self.username}[/bold cyan]", border_style="cyan"))
+        console.print(Panel.fit(
+            f"[bold cyan]🔍 CAMORRO RECON → @{self.username}[/bold cyan]",
+            border_style="cyan"
+        ))
 
+        # Method 1: web profile API
+        url = f"https://www.instagram.com/api/v1/users/web_profile_info/?username={self.username}"
         try:
-            self.profile = instaloader.Profile.from_username(self.loader.context, self.username)
-        except instaloader.exceptions.ProfileNotExistsException:
-            console.print(f"[red][✗] Account @{self.username} does not exist.[/red]")
-            return {}
-        except instaloader.exceptions.PrivateProfileNotFollowedException:
-            console.print(f"[yellow][!] @{self.username} is PRIVATE — limited data available.[/yellow]")
-            # Still gather public data
+            r = self.session.get(url, timeout=20)
+            if r.status_code == 200:
+                user = r.json()["data"]["user"]
+                self.data = self._parse_user(user)
+                return self.data
+        except Exception:
+            pass
+
+        # Method 2: public page JSON
+        try:
+            r = self.session.get(
+                f"https://www.instagram.com/{self.username}/?__a=1&__d=dis",
+                timeout=20
+            )
+            if r.status_code == 200 and "graphql" in r.text:
+                user = r.json()["graphql"]["user"]
+                self.data = self._parse_user(user)
+                return self.data
+        except Exception:
+            pass
+
+        # Method 3: scrape HTML meta
+        try:
+            r = self.session.get(f"https://www.instagram.com/{self.username}/", timeout=20)
+            if r.status_code != 200:
+                console.print(f"[red][✗] Account not found or blocked (HTTP {r.status_code})[/red]")
+                return {}
+            self.data = self._parse_html(r.text)
+            return self.data
         except Exception as e:
-            console.print(f"[red][✗] Error: {e}[/red]")
+            console.print(f"[red][✗] Recon failed: {e}[/red]")
             return {}
 
-        p = self.profile
-
-        self.data = {
-            "username": p.username,
-            "full_name": p.full_name,
-            "userid": str(p.userid),
-            "followers": p.followers,
-            "followees": p.followees,
-            "posts_count": p.mediacount,
-            "biography": p.biography,
-            "external_url": p.external_url,
-            "is_private": p.is_private,
-            "is_verified": p.is_verified,
-            "is_business": p.is_business_account,
-            "business_category": p.business_category_name,
-            "profile_pic_url": str(p.profile_pic_url) if p.profile_pic_url else "",
-            "igtv_count": p.igtvcount,
-            "has_guides": p.has_guides,
-            "has_highlight_reels": p.has_highlight_reels,
+    def _parse_user(self, u: dict) -> dict:
+        bio = u.get("biography") or u.get("bio") or ""
+        return {
+            "username": u.get("username", self.username),
+            "full_name": u.get("full_name", ""),
+            "userid": str(u.get("id") or u.get("pk") or ""),
+            "followers": (u.get("edge_followed_by") or {}).get("count") or u.get("follower_count") or 0,
+            "following": (u.get("edge_follow") or {}).get("count") or u.get("following_count") or 0,
+            "posts": (u.get("edge_owner_to_timeline_media") or {}).get("count") or u.get("media_count") or 0,
+            "biography": bio,
+            "is_private": u.get("is_private", False),
+            "is_verified": u.get("is_verified", False),
+            "external_url": u.get("external_url") or "",
+            "profile_pic": u.get("profile_pic_url_hd") or u.get("profile_pic_url") or "",
+            "emails": re.findall(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}", bio),
+            "phones": re.findall(r"\+?\d{8,15}", bio),
+            "keywords": self._keywords(bio),
         }
 
-        # ── Extract keywords from bio ──
-        if p.biography:
-            self.data["bio_keywords"] = self._extract_keywords(p.biography)
-            self.data["bio_emails"] = self._extract_emails(p.biography)
-            self.data["bio_phones"] = self._extract_phones(p.biography)
+    def _parse_html(self, html: str) -> dict:
+        def meta(prop):
+            m = re.search(rf'property="{prop}" content="([^"]*)"', html)
+            return m.group(1) if m else ""
 
-        # ── Recent posts analysis ──
-        try:
-            posts = list(p.get_posts())[:20]
-            captions = []
-            hashtags = set()
-            mentions = set()
-            total_likes = 0
-            total_comments = 0
+        title = meta("og:title")
+        desc = meta("og:description")
+        # Example desc: "1,234 Followers, 56 Following, 78 Posts - See Instagram photos..."
+        nums = re.findall(r"([\d,\.]+)\s*(Followers|Following|Posts)", desc, re.I)
+        mapped = {k.lower(): int(v.replace(",", "").replace(".", "")) for v, k in nums}
 
-            for post in posts:
-                if post.caption:
-                    captions.append(post.caption)
-                    for word in post.caption.split():
-                        if word.startswith("#"):
-                            hashtags.add(word[1:])
-                        if word.startswith("@"):
-                            mentions.add(word[1:])
-                total_likes += post.likes if post.likes else 0
-                total_comments += post.comments if post.comments else 0
+        return {
+            "username": self.username,
+            "full_name": title.split("(")[0].strip() if title else "",
+            "userid": "",
+            "followers": mapped.get("followers", 0),
+            "following": mapped.get("following", 0),
+            "posts": mapped.get("posts", 0),
+            "biography": desc,
+            "is_private": "private" in html.lower(),
+            "is_verified": False,
+            "external_url": meta("og:url"),
+            "profile_pic": meta("og:image"),
+            "emails": re.findall(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}", fixed := desc),
+            "phones": re.findall(r"\+?\d{8,15}", desc),
+            "keywords": self._keywords(desc),
+        }
 
-            n = len(posts)
-            self.data["recent_hashtags"] = list(hashtags)
-            self.data["recent_mentions"] = list(mentions)
-            self.data["avg_likes"] = total_likes // n if n else 0
-            self.data["avg_comments"] = total_comments // n if n else 0
-            self.data["engagement_rate"] = (
-                round(((total_likes + total_comments) / n / max(p.followers, 1)) * 100, 2)
-                if n else 0
-            )
-            if captions:
-                self.data["caption_keywords"] = self._extract_keywords(" ".join(captions))
-        except Exception:
-            pass  # limited posts available
-
-        return self.data
-
-    def _extract_keywords(self, text: str) -> list:
-        """Extract meaningful keywords from text."""
-        import re
-        words = re.findall(r"[a-zA-Z0-9\u0600-\u06FF]{3,}", text)
-        stopwords = {"the","and","for","that","this","with","you","have","are","not",
-                     "but","all","can","was","has","had","from","they","will","been",
-                     "من","على","في","الى","ان","هذا","التي","كان","هو","هي","لم","لن",
-                     "حيث","كما","اذا","هذه","ذلك","عند","بعض","كل","قد","لا","ما",
-                     "The","And","For","That","This","With","You","Have","Are","Not"}
-        return list(set(w for w in words if w.lower() not in stopwords))
-
-    def _extract_emails(self, text: str) -> list:
-        import re
-        return re.findall(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}", text)
-
-    def _extract_phones(self, text: str) -> list:
-        import re
-        return re.findall(r"[\+]?[0-9]{7,15}", text)
+    def _keywords(self, text: str) -> list:
+        words = re.findall(r"[A-Za-z0-9\u0600-\u06FF]{3,}", text or "")
+        stop = {"the", "and", "for", "with", "from", "من", "على", "في", "الى", "هذا", "هذه", "كان"}
+        return sorted({w for w in words if w.lower() not in stop})[:40]
 
     def display(self):
-        """Pretty-print gathered data."""
         if not self.data:
             return
-        table = Table(title=f"🎯 @{self.data.get('username','?')}", show_header=True)
-        table.add_column("Field", style="cyan", no_wrap=True)
-        table.add_column("Value", style="green")
-
+        t = Table(title=f"🎯 @{self.data.get('username')}", show_header=True)
+        t.add_column("Field", style="cyan")
+        t.add_column("Value", style="green")
         for k, v in self.data.items():
-            if k in ("bio_keywords", "recent_hashtags", "recent_mentions", "caption_keywords"):
-                v = ", ".join(v) if isinstance(v, list) else v
-            if v is not None and v != "" and v != []:
-                table.add_row(k.replace("_", " ").title(), str(v))
+            if v in ("", None, [], {}):
+                continue
+            if isinstance(v, list):
+                v = ", ".join(map(str, v))
+            t.add_row(k.replace("_", " ").title(), str(v))
+        console.print(t)
 
-        console.print(table)
-
-    def export(self, fmt: str = "json") -> str:
-        """Export recon data to file."""
-        fname = f"recon_{self.username}.{fmt}"
-        with open(fname, "w", encoding="utf-8") as f:
-            json.dump(self.data, f, indent=2, ensure_ascii=False)
-        console.print(f"[green][✓] Saved: {fname}[/green]")
-        return fname
+    def export(self, path: str = None) -> str:
+        path = path or f"recon_{self.username}.json"
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(self.data, f, ensure_ascii=False, indent=2)
+        console.print(f"[green][✓] Saved: {path}[/green]")
+        return path

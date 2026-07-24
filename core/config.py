@@ -2,92 +2,105 @@
 import os
 import random
 
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATA_DIR = os.path.join(BASE_DIR, "data")
-OUTPUT_DIR = os.path.join(BASE_DIR, "output")
-PROXIES_FILE = os.path.join(DATA_DIR, "proxies.txt")
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DATA_DIR = os.path.join(ROOT_DIR, "data")
+WORDLIST_DIR = os.path.join(DATA_DIR, "wordlists")
+OUTPUT_DIR = os.path.join(ROOT_DIR, "output", "results")
+PROXY_FILE = os.path.join(DATA_DIR, "proxies.txt")
 
-# رموز خاصة لكلمات المرور (مطلوبة من password_engine)
-SPECIAL_CHARS = list("!@#$%^&*()_+-=[]{}|;:',.<>?/~`")
-NUMBERS = list("0123456789")
-YEARS = [str(y) for y in range(1980, 2027)]
-COMMON_NUMBERS = [
-    "123", "1234", "12345", "123456", "1234567", "12345678", "123456789",
-    "00", "01", "07", "10", "11", "12", "13", "21", "22", "69", "77", "88", "99",
-    "100", "200", "1000", "2000", "2020", "2021", "2022", "2023", "2024", "2025", "2026",
-]
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+os.makedirs(WORDLIST_DIR, exist_ok=True)
+os.makedirs(DATA_DIR, exist_ok=True)
 
-COMMON_PASSWORDS = [
-    "password", "Password", "PASSWORD", "pass", "Pass123", "password1",
-    "123456", "12345678", "123456789", "1234567890", "qwerty", "qwerty123",
-    "abc123", "iloveyou", "admin", "welcome", "monkey", "dragon", "master",
-    "letmein", "login", "princess", "football", "baseball", "soccer",
-    "instagram", "insta", "insta123", "love", "lovely", "baby", "angel",
-    "shadow", "sunshine", "princess1", "hello", "hello123", "freedom",
-    "whatever", "qazwsx", "trustno1", "batman", "zaq1zaq1", "password123",
-]
+if not os.path.exists(PROXY_FILE):
+    with open(PROXY_FILE, "w", encoding="utf-8") as f:
+        f.write("# Put one proxy per line\n")
+        f.write("# ip:port\n")
+        f.write("# ip:port:user:pass\n")
+        f.write("# http://ip:port\n")
+        f.write("# socks5://ip:port\n")
 
-NAME_SUFFIXES = [
-    "123", "1234", "12345", "1", "12", "01", "07", "10", "11",
-    "!", "@", "#", "!!", "@@", "01!", "123!", "2020", "2021", "2022",
-    "2023", "2024", "2025", "2026", "69", "007", "99", "88", "77",
-]
-
-LEET_MAP = {
-    "a": ["a", "A", "4", "@"],
-    "e": ["e", "E", "3"],
-    "i": ["i", "I", "1", "!"],
-    "o": ["o", "O", "0"],
-    "s": ["s", "S", "5", "$"],
-    "t": ["t", "T", "7"],
-    "l": ["l", "L", "1"],
-    "g": ["g", "G", "9"],
-    "b": ["b", "B", "8"],
+INSTAGRAM_ENDPOINTS = {
+    "login": "https://www.instagram.com/api/v1/web/accounts/login/ajax/",
+    "profile_info": "https://www.instagram.com/{username}/?__a=1",
+    "graphql": "https://www.instagram.com/graphql/query",
+    "web_profile": "https://i.instagram.com/api/v1/users/web_profile_info/",
 }
 
 USER_AGENTS = [
+    "Instagram 289.0.0.30.120 Android (30/11; 420dpi; 1080x2340; samsung; SM-G998B; star2qlte; qcom; en_US; 507584516)",
+    "Instagram 275.0.0.27.98 Android (29/10; 480dpi; 1080x1920; Xiaomi; Redmi Note 9; merlin; mt6768; en_GB; 462859381)",
+    "Instagram 280.0.0.18.111 Android (31/12; 320dpi; 720x1600; HUAWEI; LIO-L29; hwLIO; kirin990; en_US; 479234167)",
+    "Instagram 270.0.0.21.115 Android (28/9; 560dpi; 1440x2960; samsung; SM-N975F; d2s; exynos9820; en_US; 441762849)",
+    "Instagram 288.0.0.30.118 (iPhone14,3; iOS 16.5; en_US; en; scale=3.00; 1284x2778; 509625743)",
     "Mozilla/5.0 (Linux; Android 13; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
-    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Mobile/15E148 Safari/604.1",
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 16_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.5 Mobile/15E148 Safari/604.1",
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Linux; Android 12; Pixel 6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Mobile Safari/537.36",
-    "Instagram 192.0.0.37.107 Android (33/13; 420dpi; 1080x2400; samsung; SM-G991B; o1s; exynos2100; en_US; 301484483)",
-    "Instagram 306.0.0.0.0 Android (31/12; 480dpi; 1080x2340; Xiaomi; M2101K6G; sweet; qcom; en_US; 541635890)",
 ]
 
-IG_APP_ID = "936619743392459"
-MAX_ATTEMPTS_PER_PROXY = 5
-REQUEST_TIMEOUT = 20
-DELAY_BETWEEN_ATTEMPTS = (2.0, 5.0)
-
-def ensure_dirs():
-    os.makedirs(DATA_DIR, exist_ok=True)
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
-
 def get_random_headers():
-    ua = random.choice(USER_AGENTS)
     return {
-        "User-Agent": ua,
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.9,ar;q=0.8",
+        "User-Agent": random.choice(USER_AGENTS),
+        "Accept": "*/*",
+        "Accept-Language": random.choice(["en-US,en;q=0.9", "en-GB,en;q=0.8", "ar;q=0.9,en;q=0.7"]),
         "Accept-Encoding": "gzip, deflate, br",
-        "Connection": "keep-alive",
-        "Upgrade-Insecure-Requests": "1",
-        "X-IG-App-ID": IG_APP_ID,
+        "X-IG-App-ID": "936619743392459",
+        "X-IG-Connection-Type": random.choice(["WIFI", "4G", "5G"]),
+        "X-IG-Capabilities": "3brTvwE=",
+        "X-IG-App-Locale": random.choice(["en_US", "en_GB", "ar_SA"]),
+        "X-Device-ID": "android-{}".format(random.randint(1000000000, 9999999999)),
+        "X-IG-Connection-Speed": "{}kbps".format(random.randint(1000, 15000)),
         "Origin": "https://www.instagram.com",
         "Referer": "https://www.instagram.com/",
+        "Sec-Fetch-Dest": "empty",
+        "Sec-Fetch-Mode": "cors",
+        "Sec-Fetch-Site": "same-origin",
     }
 
-def load_proxies():
-    proxies = []
-    if not os.path.isfile(PROXIES_FILE):
-        return proxies
-    try:
-        with open(PROXIES_FILE, "r", encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if line and not line.startswith("#"):
-                    proxies.append(line)
-    except OSError:
-        pass
-    return proxies
+MUTATION_PATTERNS = {
+    "basic": [
+        "{word}",
+        "{word}{year}",
+        "{word}{num}",
+        "{word}@{num}",
+        "{word}#{num}",
+        "{word}!",
+        "{word}.",
+    ],
+    "advanced": [
+        "{word}{year}{special}",
+        "{word}_{num}",
+        "{word}{month}{day}",
+        "{capitalize}{num}",
+        "{leet}",
+        "{word}{day}{month}",
+    ],
+    "complex": [
+        "{word1}{word2}{num}",
+        "{word1}_{word2}",
+        "{word1}{word2}{year}",
+        "{word1}{special}{word2}{num}",
+        "{leet}{year}",
+    ],
+}
+
+LEET_MAP = str.maketrans({
+    "a": "4", "A": "4",
+    "e": "3", "E": "3",
+    "i": "1", "I": "1",
+    "o": "0", "O": "0",
+    "s": "5", "S": "5",
+    "t": "7", "T": "7",
+    "b": "8", "B": "8",
+    "g": "9", "G": "9",
+    "l": "1", "L": "1",
+})
+
+SPECIAL_CHARS = ["!", "@", "#", "$", "%", "*", ".", "_", "?", "&"]
+
+MIN_DELAY = 2
+MAX_DELAY = 8
+MAX_ATTEMPTS_PER_IP = 15
+COOLDOWN_PERIOD = 120
+TARGET_PASSWORD_COUNT = 18000
+MAX_COMBINATIONS = 50000

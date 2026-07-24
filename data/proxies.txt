@@ -1,4 +1,4 @@
-# Put one proxy per line
+# one proxy per line
 # ip:port
 # ip:port:user:pass
 # http://ip:port

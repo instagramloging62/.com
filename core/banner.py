@@ -1,11 +1,5 @@
 #!/usr/bin/env python3
-"""
-Camoro Banner & UI Module (Termux-safe)
-Works with colorama only. Rich is optional.
-"""
-
 import os
-import sys
 
 try:
     from colorama import init, Fore, Style
@@ -21,50 +15,33 @@ try:
 except ImportError:
     R = G = Y = C = M = B = W = RE = ""
 
-# Optional rich
-HAS_RICH = False
-try:
-    from rich.console import Console
-    from rich.table import Table
-    from rich.panel import Panel
-    from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn
-    console = Console()
-    HAS_RICH = True
-except ImportError:
-    class _SimpleConsole:
-        def print(self, *args, **kwargs):
-            text = " ".join(str(a) for a in args)
-            # strip simple rich tags
-            for tag in ["[cyan]", "[/cyan]", "[green]", "[/green]",
-                        "[red]", "[/red]", "[yellow]", "[/yellow]",
-                        "[magenta]", "[/magenta]", "[bold]", "[/bold]"]:
-                text = text.replace(tag, "")
-            print(text)
-    console = _SimpleConsole()
-    Table = Panel = Progress = None
+class SimpleConsole:
+    def print(self, *args, **kwargs):
+        text = " ".join(str(a) for a in args)
+        for tag in ("[cyan]", "[/cyan]", "[green]", "[/green]", "[red]", "[/red]", "[yellow]", "[/yellow]", "[magenta]", "[/magenta]", "[bold]", "[/bold]", "[white]", "[/white]"):
+            text = text.replace(tag, "")
+        print(text)
 
+console = SimpleConsole()
 
 def clear_screen():
     os.system("clear" if os.name != "nt" else "cls")
 
-
 def show_banner():
     clear_screen()
-    banner = f"""
-{R}   ██████╗ █████╗ ███╗   ███╗ ██████╗ ██████╗  ██████╗ 
+    print(f"""
+{R}   ██████╗ █████╗ ███╗   ███╗ ██████╗ ██████╗  ██████╗
 {R}  ██╔════╝██╔══██╗████╗ ████║██╔═══██╗██╔══██╗██╔═══██╗
 {R}  ██║     ███████║██╔████╔██║██║   ██║██████╔╝██║   ██║
 {R}  ██║     ██╔══██║██║╚██╔╝██║██║   ██║██╔══██╗██║   ██║
 {R}  ╚██████╗██║  ██║██║ ╚═╝ ██║╚██████╔╝██║  ██║╚██████╔╝
-{R}   ╚═════╝╚═╝  ╚═╝╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝ ╚═════╝ 
-    
-{W}  ================================================
-{W}  |  {C}Instagram Security Testing Framework {G}v2.1  {W}|
-{W}  |  {M}Author: Camoro Team  {W}|  {Y}Termux + Linux      {W}|
-{W}  ================================================
-{RE}"""
-    print(banner)
+{R}   ╚═════╝╚═╝  ╚═╝╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝ ╚═════╝
 
+{W}  ================================================
+{W}  |  {C}Instagram Security Testing Framework {G}v2.1 {W}|
+{W}  |  {M}Author: Camoro Team {W}| {Y}Termux + Linux     {W}|
+{W}  ================================================
+{RE}""")
 
 def show_menu():
     print(f"""
@@ -81,24 +58,20 @@ def show_menu():
 """)
     print(f"{Y}[*] Select option [0-7]: {RE}", end="")
 
-
 def show_info_panel(username, data):
     if not data:
         print(f"{R}[!] Could not retrieve information for @{username}{RE}")
         return
-
     bio = str(data.get("biography", "N/A") or "N/A")[:100]
     followers = data.get("followers", 0) or 0
     following = data.get("following", 0) or 0
     posts = data.get("posts", 0) or 0
-
     try:
         followers_s = f"{int(followers):,}"
         following_s = f"{int(following):,}"
     except Exception:
         followers_s = str(followers)
         following_s = str(following)
-
     print(f"""
 {G}========== Target Profile: @{username} =========={RE}
 {G}Username:{W}      @{username}
@@ -114,7 +87,6 @@ def show_info_panel(username, data):
 {G}================================================{RE}
 """)
 
-
 def show_password_stats(passwords):
     print(f"\n{M}========== Password Generation Stats =========={RE}")
     print(f"{G}TOTAL:{W} {len(passwords):,} passwords generated{RE}")
@@ -124,13 +96,5 @@ def show_password_stats(passwords):
             print(f"  - {p}")
     print(f"{M}==============================================={RE}\n")
 
-
 def show_progress_bar():
-    if HAS_RICH and Progress is not None:
-        return Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            BarColumn(bar_width=30),
-            TextColumn("{task.completed}/{task.total}"),
-        )
     return None

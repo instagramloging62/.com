@@ -2,7 +2,8 @@
 import os
 
 try:
-    from colorama import init, Fore, Style
+    from colorama import Fore, Style, init
+
     init(autoreset=True)
     R = Fore.RED
     G = Fore.GREEN
@@ -15,26 +16,41 @@ try:
 except ImportError:
     R = G = Y = C = M = B = W = RE = ""
 
+
 class SimpleConsole:
     def print(self, *args, **kwargs):
         text = " ".join(str(a) for a in args)
         for tag in (
-            "[cyan]", "[/cyan]", "[green]", "[/green]",
-            "[red]", "[/red]", "[yellow]", "[/yellow]",
-            "[magenta]", "[/magenta]", "[bold]", "[/bold]",
-            "[white]", "[/white]",
+            "[cyan]",
+            "[/cyan]",
+            "[green]",
+            "[/green]",
+            "[red]",
+            "[/red]",
+            "[yellow]",
+            "[/yellow]",
+            "[magenta]",
+            "[/magenta]",
+            "[bold]",
+            "[/bold]",
+            "[white]",
+            "[/white]",
         ):
             text = text.replace(tag, "")
         print(text)
 
+
 console = SimpleConsole()
+
 
 def clear_screen():
     os.system("clear" if os.name != "nt" else "cls")
 
+
 def show_banner():
     clear_screen()
-    print(f"""
+    print(
+        f"""
 {R}   ██████╗ █████╗ ███╗   ███╗ ██████╗ ██████╗  ██████╗
 {R}  ██╔════╝██╔══██╗████╗ ████║██╔═══██╗██╔══██╗██╔═══██╗
 {R}  ██║     ███████║██╔████╔██║██║   ██║██████╔╝██║   ██║
@@ -46,10 +62,13 @@ def show_banner():
 {W}  |  {C}Instagram Security Testing Framework {G}v2.1 {W}|
 {W}  |  {M}Author: Camoro Team {W}| {Y}Termux + Linux     {W}|
 {W}  ================================================
-{RE}""")
+{RE}"""
+    )
+
 
 def show_menu():
-    print(f"""
+    print(
+        f"""
 {C}========== [ CAMORO MAIN MENU ] ============{RE}
 {C}[1]{W} Target Information Gathering
 {C}[2]{W} AI Password Generation
@@ -60,8 +79,10 @@ def show_menu():
 {C}[7]{W} Settings & Config
 {C}[0]{W} Exit
 {C}============================================{RE}
-""")
+"""
+    )
     print(f"{Y}[*] Select option [0-7]: {RE}", end="")
+
 
 def show_info_panel(username, data):
     if not data:
@@ -72,6 +93,7 @@ def show_info_panel(username, data):
     followers = data.get("followers", 0) or 0
     following = data.get("following", 0) or 0
     posts = data.get("posts", 0) or 0
+    source = data.get("source", "none")
 
     try:
         followers_s = f"{int(followers):,}"
@@ -80,10 +102,11 @@ def show_info_panel(username, data):
         followers_s = str(followers)
         following_s = str(following)
 
-    print(f"""
+    print(
+        f"""
 {G}========== Target Profile: @{username} =========={RE}
 {G}Username:{W}      @{username}
-{G}Full Name:{W}     {data.get('full_name', 'N/A')}
+{G}Full Name:{W}     {data.get('full_name', 'N/A') or 'N/A'}
 {G}Bio:{W}           {bio}
 {G}Followers:{W}     {followers_s}
 {G}Following:{W}     {following_s}
@@ -92,8 +115,11 @@ def show_info_panel(username, data):
 {G}Business:{W}      {data.get('is_business', False)}
 {G}Private:{W}       {data.get('is_private', False)}
 {G}External URL:{W}  {data.get('external_url', 'N/A') or 'N/A'}
+{G}Source:{W}        {source}
 {G}================================================{RE}
-""")
+"""
+    )
+
 
 def show_password_stats(passwords):
     print(f"\n{M}========== Password Generation Stats =========={RE}")
@@ -103,6 +129,3 @@ def show_password_stats(passwords):
         for p in passwords[:8]:
             print(f"  - {p}")
     print(f"{M}==============================================={RE}\n")
-
-def show_progress_bar():
-    return None

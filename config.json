@@ -1,0 +1,12 @@
+{
+  "delay_min": 3.0,
+  "delay_max": 5.0,
+  "default_wordlist_size": 18000,
+  "proxy_file": "proxies.txt",
+  "rotate_proxy_every": 10,
+  "rate_limit_sleep": 60,
+  "max_rate_hits": 20,
+  "user_agent_rotate": true,
+  "save_every": 25,
+  "timeout": 20
+}

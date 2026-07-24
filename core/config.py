@@ -35,6 +35,7 @@ USER_AGENTS = [
     "Instagram 288.0.0.30.118 (iPhone14,3; iOS 16.5; en_US; en; scale=3.00; 1284x2778; 509625743)",
     "Mozilla/5.0 (Linux; Android 13; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
     "Mozilla/5.0 (iPhone; CPU iPhone OS 16_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.5 Mobile/15E148 Safari/604.1",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
 ]
 
 def get_random_headers():
@@ -57,16 +58,46 @@ def get_random_headers():
     }
 
 MUTATION_PATTERNS = {
-    "basic": ["{word}", "{word}{year}", "{word}{num}", "{word}@{num}", "{word}#{num}", "{word}!", "{word}."],
-    "advanced": ["{word}{year}{special}", "{word}_{num}", "{word}{month}{day}", "{capitalize}{num}", "{leet}", "{word}{day}{month}"],
-    "complex": ["{word1}{word2}{num}", "{word1}_{word2}", "{word1}{word2}{year}", "{word1}{special}{word2}{num}", "{leet}{year}"],
+    "basic": [
+        "{word}",
+        "{word}{year}",
+        "{word}{num}",
+        "{word}@{num}",
+        "{word}#{num}",
+        "{word}!",
+        "{word}.",
+    ],
+    "advanced": [
+        "{word}{year}{special}",
+        "{word}_{num}",
+        "{word}{month}{day}",
+        "{capitalize}{num}",
+        "{leet}",
+        "{word}{day}{month}",
+    ],
+    "complex": [
+        "{word1}{word2}{num}",
+        "{word1}_{word2}",
+        "{word1}{word2}{year}",
+        "{word1}{special}{word2}{num}",
+        "{leet}{year}",
+    ],
 }
 
 LEET_MAP = str.maketrans({
-    "a": "4", "A": "4", "e": "3", "E": "3", "i": "1", "I": "1",
-    "o": "0", "O": "0", "s": "5", "S": "5", "t": "7", "T": "7",
-    "b": "8", "B": "8", "g": "9", "G": "9", "l": "1", "L": "1",
+    "a": "4", "A": "4",
+    "e": "3", "E": "3",
+    "i": "1", "I": "1",
+    "o": "0", "O": "0",
+    "s": "5", "S": "5",
+    "t": "7", "T": "7",
+    "b": "8", "B": "8",
+    "g": "9", "G": "9",
+    "l": "1", "L": "1",
 })
+
+# --- required by password_engine.py ---
+SPECIAL_CHARS = ["!", "@", "#", "$", "%", "*", ".", "_", "?", "&"]
 
 MIN_DELAY = 2
 MAX_DELAY = 8

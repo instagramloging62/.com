@@ -1,0 +1,4 @@
+# one per line
+# http://user:pass@ip:port
+# http://ip:port
+# ip:port
